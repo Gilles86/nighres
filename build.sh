@@ -175,7 +175,7 @@ jcc_args=(
 	"--build"
 )
 
-python3 -m jcc ${jcc_args[@]}
+python -m jcc ${jcc_args[@]}
 
 
 #
@@ -189,7 +189,7 @@ cp -rv build/nighresjava/ ../
 find build/ -type f | grep '.so$' | head -n 1 | xargs -I '{}' -- cp '{}' ../nighresjava/_nighresjava.so
 cd ..
 
-pip3 install .
+pip install .
 
 # Make the python wheel
 # PLT=$(uname | tr '[:upper:]' '[:lower:]')
