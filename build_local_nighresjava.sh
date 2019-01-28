@@ -11,18 +11,18 @@ unset CDPATH; cd "$( dirname "${BASH_SOURCE[0]}" )"; cd "$(pwd -P)"
 fatal() { echo -e "$1"; exit 1; }
 function join_by { local IFS="$1"; shift; echo "$*"; }
 
-cbstools_repo="https://github.com/piloubazin/cbstools-public.git"
-imcntk_repo="https://github.com/piloubazin/imcn-imaging.git"
-
-release="release-1.1.0b"
+# define here the local folders for your installation of CBSTools, IMCNtk and Nighres
+cbstools_local="/home/pilou/Code/github/cbstools-public"
+imcntk_local="/home/pilou/Code/github/imcn-imaging"
+nighres_local="/home/pilou/Code/github/nighres"
 
 # Check the system has the necessary commands
 hash wget tar javac jar python3 pip3 2>/dev/null || fatal "This script needs the following commands available: wget tar javac jar python3 pip3"
 
 # Check for setuptools and wheels
-pip_modules=$(pip3 list --format columns | tr -s ' ' | cut -f 1 -d ' ')
-echo "${pip_modules}" | grep setuptools > /dev/null || fatal 'This script requires setuptools.\nInstall with `pip3 install --upgrade setuptools`'
-echo "${pip_modules}" | grep wheel > /dev/null || fatal 'This script requires wheel.\nInstall with `pip3 install --upgrade wheel`'
+pip_modules=$(pip3 list | tr -s ' ' | cut -f 1 -d ' ')
+echo "${pip_modules}" | grep setuptools > /dev/null || fatal 'This script requires setuptools.\nInstall with `pip install --upgrade setuptools`'
+echo "${pip_modules}" | grep wheel > /dev/null || fatal 'This script requires wheel.\nInstall with `pip install --upgrade wheel`'
 
 # echo "Before detection: $JAVA_HOME"
 
@@ -32,7 +32,7 @@ export JAVA_HOME=${JAVA_HOME:-"$detected_home"}
 # echo "After detection: $JAVA_HOME"
 
 # Check that JCC is installed
-echo "${pip_modules}" | grep JCC > /dev/null || fatal 'This script requires JCC.\nInstall with `apt-get install jcc` or equivalent and `pip3 install jcc`'
+echo "${pip_modules}" | grep JCC > /dev/null || fatal 'This script requires JCC.\nInstall with `apt-get install jcc` or equivalent and `pip install jcc`'
 
 # Attempt to check for python development headers
 # Inspired by https://stackoverflow.com/a/4850603
@@ -43,19 +43,6 @@ test -f "${python_include_path}/Python.h" || fatal 'This script requires python 
 ## COMPILE CBSTOOLS
 #
 
-# Get cbstools git clone
-test -d cbstools-public && (
-    cd cbstools-public
-	git checkout $release
-	git pull
-	cd ..
-) || (
-	git clone $cbstools_repo
-	cd cbstools-public
-	git checkout $release
-	cd ..
-)
-
 # Java dependencies. Order matters
 deps=(
 	"."
@@ -65,7 +52,7 @@ deps=(
 deps_list=$(join_by ":" "${deps[@]}")
 
 # List of library files needed to run the cbstools core functions
-source cbstools-lib-files.sh
+source $nighres_local/cbstools-lib-files.sh
 echo $cbstools_files # result is in $cbstools_files
 
 cbstools_list=$(join_by " " "${cbstools_files[@]}")
@@ -82,37 +69,24 @@ javac_opts=(
 )
 
 echo "Compiling..."
-cd cbstools-public
+#cd cbstools-public
+cd $cbstools_local
+#mkdir -p build
 javac -cp ${deps_list} ${javac_opts[@]} de/mpg/cbs/core/*/*.java $cbstools_list
 
-
 echo "Assembling..."
-mkdir -p ../nighresjava/src
-mkdir -p ../nighresjava/lib
+mkdir -p $nighres_local/nighresjava/src
+mkdir -p $nighres_local/nighresjava/lib
 
 #jar cf cbstools.jar     de/mpg/cbs/core/*/*.class
-jar cf ../nighresjava/src/nighresjava.jar de/mpg/cbs/core/*/*.class
-jar cf ../nighresjava/src/cbstools-lib.jar de/mpg/cbs/*/*.class
+jar cf $nighres_local/nighresjava/src/nighresjava.jar de/mpg/cbs/core/*/*.class
+jar cf $nighres_local/nighresjava/src/cbstools-lib.jar de/mpg/cbs/*/*.class
 
-cp lib/*.jar ../nighresjava/lib/
-cd ..
+cp lib/*.jar $nighres_local/nighresjava/lib/
 
 #
 ## COMPILE IMCNTK
 #
-
-# Get imcntk git clone
-test -d imcn-imaging && (
-    cd imcn-imaging
-	git checkout $release
-	git pull
-	cd ..
-) || (
-	git clone $imcntk_repo
-	cd imcn-imaging
-	git checkout $release
-	cd ..
-)
 
 # Java dependencies. Order matters
 deps=(
@@ -123,7 +97,7 @@ deps=(
 deps_list=$(join_by ":" "${deps[@]}")
 
 # List of library files needed to run the cbstools core functions
-source imcntk-lib-files.sh
+source $nighres_local/imcntk-lib-files.sh
 echo $imcntk_files # result is in $cbstools_files
 
 imcntk_list=$(join_by " " "${imcntk_files[@]}")
@@ -140,20 +114,22 @@ javac_opts=(
 )
 
 echo "Compiling..."
-cd imcn-imaging
+#cd cbstools-public
+cd $imcntk_local
+#mkdir -p build
 javac -cp ${deps_list} ${javac_opts[@]} nl/uva/imcn/algorithms/*.java $imcntk_list
 
 echo "Assembling..."
-jar uf ../nighresjava/src/nighresjava.jar nl/uva/imcn/algorithms/*.class
-jar cf ../nighresjava/src/imcntk-lib.jar nl/uva/imcn/libraries/*.class nl/uva/imcn/methods/*.class nl/uva/imcn/structures/*.class nl/uva/imcn/utilities/*.class 
+#jar cf imcntk.jar     nl/uva/imcn/algorithms/*.class
+jar uf $nighres_local/nighresjava/src/nighresjava.jar nl/uva/imcn/algorithms/*.class
+jar cf $nighres_local/nighresjava/src/imcntk-lib.jar nl/uva/imcn/libraries/*.class nl/uva/imcn/methods/*.class nl/uva/imcn/structures/*.class nl/uva/imcn/utilities/*.class 
 
-cp lib/*.jar ../nighresjava/lib/
-cd ..
+cp lib/*.jar $nighres_local/nighresjava/lib/
 
 #
 ## WRAP TO PYTHON
 #
-cd nighresjava
+cd $nighres_local/nighresjava
 
 jcc_args=(
 	# All public methods in this JAR will be wrapped
@@ -175,7 +151,7 @@ jcc_args=(
 	"--build"
 )
 
-python -m jcc ${jcc_args[@]}
+python3 -m jcc ${jcc_args[@]}
 
 
 #
@@ -184,26 +160,10 @@ python -m jcc ${jcc_args[@]}
 
 echo "Copying necessary files for nires pypi package..."
 
-cp -rv build/nighresjava/ ../
+cp -rv build/nighresjava/ $nighres_local/
 # Find and copy the shared object file for the current architecture
-find build/ -type f | grep '.so$' | head -n 1 | xargs -I '{}' -- cp '{}' ../nighresjava/_nighresjava.so
-cd ..
+find build/ -type f | grep '.so$' | head -n 1 | xargs -I '{}' -- cp '{}' $nighres_local/nighresjava/_nighresjava.so
+cd $nighres_local
 
-pip install .
-
-# Make the python wheel
-# PLT=$(uname | tr '[:upper:]' '[:lower:]')
-# for now use manylinux
-# PLT="manylinux1"
-# CPU=$(lscpu | grep -oP 'Architecture:\s*\K.+')
-# PY="$(python -V 2>&1)"
-# if [[ $PY == *2\.*\.* ]]; then
-#     python setup.py bdist_wheel --dist-dir dist --plat-name ${PLT}_${CPU} --python-tag py2
-# elif [[ $PY == *3\.*\.* ]]; then
-# 	python setup.py bdist_wheel --dist-dir dist --plat-name ${PLT}_${CPU} --python-tag py3
-# fi
-
-
-# remove unused folders (optional, requires re-download
-#rm -rf cbstools-public
-#rm -rf imcn-imaging
+# finish the installation for the libabry
+pip3 install .
